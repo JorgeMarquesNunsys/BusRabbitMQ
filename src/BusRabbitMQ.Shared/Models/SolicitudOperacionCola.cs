@@ -11,7 +11,6 @@ public sealed class SolicitudOperacionCola
 
     public string? NombreCola { get; init; }
     public JsonElement Contenido { get; init; }
-    public ConfiguracionConexionRabbit? ConexionPersonalizada { get; init; }
     public bool PermitirPublicarSinSuscriptores { get; init; }
 
     public IDictionary<string, string?> Metadatos
@@ -26,7 +25,7 @@ public sealed class SolicitudOperacionCola
 
         if (tipoOperacion is TipoOperacionCola.Enviar or TipoOperacionCola.Publicar)
         {
-            if (Contenido.ValueKind == JsonValueKind.Undefined || Contenido.ValueKind == JsonValueKind.Null)
+            if (Contenido.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
             {
                 errores.Add("El contenido del mensaje es obligatorio.");
             }
@@ -40,15 +39,6 @@ public sealed class SolicitudOperacionCola
         if (_metadatos.Any(par => string.IsNullOrWhiteSpace(par.Key)))
         {
             errores.Add("Los metadatos deben contener claves válidas.");
-        }
-
-        if (ConexionPersonalizada is not null)
-        {
-            var erroresConexion = ConexionPersonalizada.Validar();
-            if (erroresConexion.Count > 0)
-            {
-                errores.AddRange(erroresConexion);
-            }
         }
 
         return errores;

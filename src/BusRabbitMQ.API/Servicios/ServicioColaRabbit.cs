@@ -7,21 +7,22 @@ using BusRabbitMQ.Shared.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
 
 namespace BusRabbitMQ.API.Servicios;
 
 public sealed class ServicioColaRabbit : IServicioColaRabbit
 {
-    private readonly IOptionsMonitor<ConfiguracionConexionRabbit> _opcionesConexion;
+    private readonly IContextoConexionRabbit _contextoConexion;
     private readonly IAdministradorLog _administradorLog;
     private readonly ILogger<ServicioColaRabbit>? _logger;
 
     public ServicioColaRabbit(
-        IOptionsMonitor<ConfiguracionConexionRabbit> opcionesConexion,
+        IContextoConexionRabbit contextoConexion,
         IAdministradorLog administradorLog,
         ILogger<ServicioColaRabbit>? logger = null)
     {
-        _opcionesConexion = opcionesConexion ?? throw new ArgumentNullException(nameof(opcionesConexion));
+        _contextoConexion = contextoConexion ?? throw new ArgumentNullException(nameof(contextoConexion));
         _administradorLog = administradorLog ?? throw new ArgumentNullException(nameof(administradorLog));
         _logger = logger;
     }
@@ -38,7 +39,7 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
 
         try
         {
-            var configuracion = ObtenerConfiguracionEfectiva(solicitud!.ConexionPersonalizada);
+            var configuracion = ObtenerConfiguracionEfectiva();
             var nombreCola = ResolverNombreCola(solicitud.NombreCola, configuracion);
 
             using var conexion = CrearConexion(configuracion);
@@ -96,7 +97,7 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
 
         try
         {
-            var configuracion = ObtenerConfiguracionEfectiva(solicitud!.ConexionPersonalizada);
+            var configuracion = ObtenerConfiguracionEfectiva();
             var nombreCola = ResolverNombreCola(solicitud.NombreCola, configuracion);
 
             using var conexion = CrearConexion(configuracion);
@@ -140,7 +141,7 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
 
         try
         {
-            var configuracion = ObtenerConfiguracionEfectiva(solicitud!.ConexionPersonalizada);
+            var configuracion = ObtenerConfiguracionEfectiva();
             var nombreCola = ResolverNombreCola(solicitud.NombreCola, configuracion);
 
             using var conexion = CrearConexion(configuracion);
@@ -210,14 +211,11 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
         return solicitud.Validar();
     }
 
-    private ConfiguracionConexionRabbit ObtenerConfiguracionEfectiva(ConfiguracionConexionRabbit? personalizada)
+    private ConfiguracionConexionRabbit ObtenerConfiguracionEfectiva(
+        )
     {
-        if (personalizada is null)
-        {
-            return _opcionesConexion.CurrentValue ?? new ConfiguracionConexionRabbit();
-        }
 
-        return personalizada;
+            return _contextoConexion.ObtenerConfiguracionActual() ?? new ConfiguracionConexionRabbit();
     }
 
     private static string ResolverNombreCola(string? nombreSolicitado, ConfiguracionConexionRabbit configuracion)
@@ -269,13 +267,22 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
 
     private static QueueDeclareOk DeclararCola(IModel canal, string nombreCola, ConfiguracionConexionRabbit configuracion)
     {
-        return canal.QueueDeclare(
-            queue: nombreCola,
-            durable: configuracion.PersistirMensajes,
-            exclusive: false,
-            autoDelete: false,
-            arguments: null);
-    }
+        try
+        {
+            // Si la cola ya existe (quorum, classic, etc.), solo recuperamos su estado.
+            return canal.QueueDeclarePassive(nombreCola);
+        }
+        catch (OperationInterruptedException ex) when (ex.ShutdownReason?.ReplyCode == 404)
+        {
+            // No existe: la creamos con la configuración actual.
+            return canal.QueueDeclare(
+                   queue: nombreCola,
+                   durable: configuracion.PersistirMensajes,
+                   exclusive: false,
+                   autoDelete: false,
+                   arguments: null);
+           }
+       }
 
     private static byte[] CodificarContenido(JsonElement contenido)
     {

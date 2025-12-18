@@ -1,6 +1,7 @@
 using BusRabbitMQ.API.Servicios;
 using BusRabbitMQ.API.Servicios.Interfaces;
 using BusRabbitMQ.Shared.Extensiones;
+using Microsoft.OpenApi.Models;
 
 namespace BusRabbitMQ.API.Extensiones;
 
@@ -17,9 +18,18 @@ public static class ConfiguracionAplicacionExtensions
 
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddOpenApi();
+        builder.Services.AddSwaggerGen(opciones =>
+        {
+            opciones.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "BusRabbit API",
+                Version = "v1",
+                Description = "API defensiva para administrar colas RabbitMQ (send/publish/subscribe)."
+            });
+        });
 
         builder.Services.AgregarComponentesCompartidosRabbit(builder.Configuration);
+        builder.Services.AddSingleton<IContextoConexionRabbit, ContextoConexionRabbit>();
         builder.Services.AddSingleton<IServicioColaRabbit, ServicioColaRabbit>();
     }
 
@@ -27,8 +37,14 @@ public static class ConfiguracionAplicacionExtensions
     {
         ArgumentNullException.ThrowIfNull(app);
 
+        app.UseSwagger();
+        app.UseSwaggerUI(opciones =>
+        {
+            opciones.SwaggerEndpoint("/swagger/v1/swagger.json", "BusRabbit API v1");
+            opciones.DisplayOperationId();
+        });
+
         app.UseHttpsRedirection();
         app.MapControllers();
-        app.MapOpenApi();
     }
 }

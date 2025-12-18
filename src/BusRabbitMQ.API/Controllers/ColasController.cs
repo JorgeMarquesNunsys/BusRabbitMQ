@@ -9,10 +9,49 @@ namespace BusRabbitMQ.API.Controllers;
 public sealed class ColasController : ControllerBase
 {
     private readonly IServicioColaRabbit _servicioCola;
+    private readonly IContextoConexionRabbit _contextoConexion;
 
-    public ColasController(IServicioColaRabbit servicioCola)
+    public ColasController(IServicioColaRabbit servicioCola, IContextoConexionRabbit contextoConexion)
     {
         _servicioCola = servicioCola;
+        _contextoConexion = contextoConexion;
+    }
+
+    [HttpGet("connection")]
+    public ActionResult<ConfiguracionConexionRabbit> ObtenerConexionActual()
+    {
+        var configuracion = _contextoConexion.ObtenerConfiguracionActual();
+        return Ok(configuracion);
+    }
+
+    [HttpPost("connection")]
+    public async Task<IActionResult> ActualizarConexionAsync(
+        [FromBody] ConfiguracionConexionRabbit configuracion,
+        CancellationToken cancellationToken)
+    {
+        var resultado = await _contextoConexion.ActualizarConfiguracionAsync(configuracion, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!resultado.EsExitoso)
+        {
+            return BadRequest(resultado);
+        }
+
+        return Ok(resultado);
+    }
+
+    [HttpPost("connection/default")]
+    public async Task<IActionResult> RestablecerConexionPredeterminadaAsync(CancellationToken cancellationToken)
+    {
+        var resultado = await _contextoConexion.RestablecerConfiguracionPredeterminadaAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!resultado.EsExitoso)
+        {
+            return BadRequest(resultado);
+        }
+
+        return Ok(resultado);
     }
 
     [HttpPost("send")]

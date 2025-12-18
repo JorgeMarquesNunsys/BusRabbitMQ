@@ -5,7 +5,6 @@ namespace BusRabbitMQ.Shared.Models;
 public sealed class SolicitudEstadoCola
 {
     public string? NombreCola { get; init; }
-    public ConfiguracionConexionRabbit? ConexionPersonalizada { get; init; }
     public bool IncluirContenido { get; init; } = true;
     public int MaximoMensajes { get; init; } = 50;
 
@@ -25,15 +24,6 @@ public sealed class SolicitudEstadoCola
         else if (MaximoMensajes > 500)
         {
             errores.Add("El máximo de mensajes permitidos por consulta es 500.");
-        }
-
-        if (ConexionPersonalizada is not null)
-        {
-            var erroresConexion = ConexionPersonalizada.Validar();
-            if (erroresConexion.Count > 0)
-            {
-                errores.AddRange(erroresConexion);
-            }
         }
 
         return errores;

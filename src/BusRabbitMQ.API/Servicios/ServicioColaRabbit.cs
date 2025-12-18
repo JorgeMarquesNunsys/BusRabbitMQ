@@ -5,7 +5,6 @@ using BusRabbitMQ.Shared.Enumeraciones;
 using BusRabbitMQ.Shared.Interfaces;
 using BusRabbitMQ.Shared.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Exceptions;
 
@@ -15,15 +14,18 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
 {
     private readonly IContextoConexionRabbit _contextoConexion;
     private readonly IAdministradorLog _administradorLog;
+    private readonly IFabricaConexionRabbit _fabricaConexion;
     private readonly ILogger<ServicioColaRabbit>? _logger;
 
     public ServicioColaRabbit(
         IContextoConexionRabbit contextoConexion,
         IAdministradorLog administradorLog,
+        IFabricaConexionRabbit fabricaConexion,
         ILogger<ServicioColaRabbit>? logger = null)
     {
         _contextoConexion = contextoConexion ?? throw new ArgumentNullException(nameof(contextoConexion));
         _administradorLog = administradorLog ?? throw new ArgumentNullException(nameof(administradorLog));
+        _fabricaConexion = fabricaConexion ?? throw new ArgumentNullException(nameof(fabricaConexion));
         _logger = logger;
     }
 
@@ -42,7 +44,7 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
             var configuracion = ObtenerConfiguracionEfectiva();
             var nombreCola = ResolverNombreCola(solicitud.NombreCola, configuracion);
 
-            using var conexion = CrearConexion(configuracion);
+            using var conexion = _fabricaConexion.CrearConexion(configuracion);
             using var canal = conexion.CreateModel();
             ConfigurarCalidadServicio(canal, configuracion);
             var declaracion = DeclararCola(canal, nombreCola, configuracion);
@@ -100,7 +102,7 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
             var configuracion = ObtenerConfiguracionEfectiva();
             var nombreCola = ResolverNombreCola(solicitud.NombreCola, configuracion);
 
-            using var conexion = CrearConexion(configuracion);
+            using var conexion = _fabricaConexion.CrearConexion(configuracion);
             using var canal = conexion.CreateModel();
             ConfigurarCalidadServicio(canal, configuracion);
             DeclararCola(canal, nombreCola, configuracion);
@@ -144,7 +146,7 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
             var configuracion = ObtenerConfiguracionEfectiva();
             var nombreCola = ResolverNombreCola(solicitud.NombreCola, configuracion);
 
-            using var conexion = CrearConexion(configuracion);
+            using var conexion = _fabricaConexion.CrearConexion(configuracion);
             using var canal = conexion.CreateModel();
             ConfigurarCalidadServicio(canal, configuracion);
             var declaracion = DeclararCola(canal, nombreCola, configuracion);
@@ -191,7 +193,7 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
         }
     }
 
-    private IReadOnlyCollection<string> ValidarSolicitudOperacion(SolicitudOperacionCola? solicitud, TipoOperacionCola tipoOperacion)
+    private static IReadOnlyCollection<string> ValidarSolicitudOperacion(SolicitudOperacionCola? solicitud, TipoOperacionCola tipoOperacion)
     {
         if (solicitud is null)
         {
@@ -201,7 +203,7 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
         return solicitud.Validar(tipoOperacion);
     }
 
-    private IReadOnlyCollection<string> ValidarSolicitudEstado(SolicitudEstadoCola? solicitud)
+    private static IReadOnlyCollection<string> ValidarSolicitudEstado(SolicitudEstadoCola? solicitud)
     {
         if (solicitud is null)
         {
@@ -211,16 +213,16 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
         return solicitud.Validar();
     }
 
-    private ConfiguracionConexionRabbit ObtenerConfiguracionEfectiva(
-        )
+    private ConfiguracionConexionRabbit ObtenerConfiguracionEfectiva()
     {
-
-            return _contextoConexion.ObtenerConfiguracionActual() ?? new ConfiguracionConexionRabbit();
+        return _contextoConexion.ObtenerConfiguracionActual();
     }
 
     private static string ResolverNombreCola(string? nombreSolicitado, ConfiguracionConexionRabbit configuracion)
     {
-        var nombre = string.IsNullOrWhiteSpace(nombreSolicitado) ? configuracion.NombreColaPorDefecto : nombreSolicitado.Trim();
+        var nombre = string.IsNullOrWhiteSpace(nombreSolicitado)
+            ? configuracion.NombreColaPorDefecto
+            : nombreSolicitado.Trim();
 
         if (string.IsNullOrWhiteSpace(nombre))
         {
@@ -228,33 +230,6 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
         }
 
         return nombre;
-    }
-
-    private IConnection CrearConexion(ConfiguracionConexionRabbit configuracion)
-    {
-        var factory = new ConnectionFactory
-        {
-            HostName = configuracion.HostName,
-            Port = configuracion.Puerto,
-            UserName = configuracion.Usuario,
-            Password = configuracion.Contrasena,
-            VirtualHost = configuracion.VirtualHost,
-            AutomaticRecoveryEnabled = true,
-            DispatchConsumersAsync = true,
-            ClientProvidedName = configuracion.NombreConexion,
-            RequestedConnectionTimeout = TimeSpan.FromSeconds(Math.Max(1, configuracion.TiempoMaximoEsperaSegundos))
-        };
-
-        if (configuracion.UsarSsl)
-        {
-            factory.Ssl = new SslOption
-            {
-                Enabled = true,
-                ServerName = configuracion.HostName
-            };
-        }
-
-        return factory.CreateConnection(configuracion.NombreConexion);
     }
 
     private static void ConfigurarCalidadServicio(IModel canal, ConfiguracionConexionRabbit configuracion)
@@ -269,20 +244,18 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
     {
         try
         {
-            // Si la cola ya existe (quorum, classic, etc.), solo recuperamos su estado.
             return canal.QueueDeclarePassive(nombreCola);
         }
         catch (OperationInterruptedException ex) when (ex.ShutdownReason?.ReplyCode == 404)
         {
-            // No existe: la creamos con la configuración actual.
             return canal.QueueDeclare(
-                   queue: nombreCola,
-                   durable: configuracion.PersistirMensajes,
-                   exclusive: false,
-                   autoDelete: false,
-                   arguments: null);
-           }
-       }
+                queue: nombreCola,
+                durable: configuracion.PersistirMensajes,
+                exclusive: false,
+                autoDelete: false,
+                arguments: null);
+        }
+    }
 
     private static byte[] CodificarContenido(JsonElement contenido)
     {
@@ -295,7 +268,7 @@ public sealed class ServicioColaRabbit : IServicioColaRabbit
         return Encoding.UTF8.GetString(cuerpo.Span);
     }
 
-    private IBasicProperties CrearPropiedadesMensaje(IModel canal, SolicitudOperacionCola solicitud, ConfiguracionConexionRabbit configuracion)
+    private static IBasicProperties CrearPropiedadesMensaje(IModel canal, SolicitudOperacionCola solicitud, ConfiguracionConexionRabbit configuracion)
     {
         var propiedades = canal.CreateBasicProperties();
         propiedades.ContentType = "application/json";

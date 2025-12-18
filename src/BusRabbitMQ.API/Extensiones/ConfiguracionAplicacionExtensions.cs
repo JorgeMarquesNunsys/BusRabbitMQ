@@ -30,6 +30,7 @@ public static class ConfiguracionAplicacionExtensions
 
         builder.Services.AgregarComponentesCompartidosRabbit(builder.Configuration);
         builder.Services.AddSingleton<IContextoConexionRabbit, ContextoConexionRabbit>();
+        builder.Services.AddSingleton<IFabricaConexionRabbit, FabricaConexionRabbit>();
         builder.Services.AddSingleton<IServicioColaRabbit, ServicioColaRabbit>();
     }
 

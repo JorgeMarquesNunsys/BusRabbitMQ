@@ -1,12 +1,12 @@
 # BusRabbit
 
 ## Descripción general
-BusRabbit es una solución .NET 10 orientada a exponer servicios REST que administran colas RabbitMQ mediante envío directo (`SEND`), publicación (`PUBLISH`) y suscripción (`SUBSCRIBE`). La solución aplica programación defensiva, registro diario de errores, permite cambiar la conexión activa a una cola remota mediante un endpoint dedicado o restablecerla a la configuración por defecto (sin body) y publica la especificación Swagger (Swashbuckle) junto con la interfaz `Swagger UI` en `/swagger`.
+BusRabbit es una solución .NET 10 orientada a exponer servicios REST que administran colas RabbitMQ mediante envío directo (`SEND`), publicación (`PUBLISH`) y suscripción (`SUBSCRIBE`). La solución aplica programación defensiva, registro diario de errores, permite cambiar/restaurar la conexión activa a la cola objetivo mediante endpoints dedicados y publica la especificación Swagger (Swashbuckle) junto con la interfaz `Swagger UI` en `/swagger`.
 
 ## Arquitectura
 - **BusRabbitMQ.Shared**: Modelos en español, enumeraciones, helpers (por ejemplo, `LogHelper`, `EnumHelper`) y extensiones de inyección para compartir configuración de RabbitMQ y logging.
-- **BusRabbitMQ.API**: Servicios que interactúan con RabbitMQ (`ContextoConexionRabbit`, `ServicioColaRabbit`) y controladores (`ColasController`) expuestos en Swagger.
-- **BusRabbitMQ.APITest**: (Pendiente) Incluirá pruebas unitarias con xUnit para controladores y servicios, organizadas por modelo.
+- **BusRabbitMQ.API**: Servicios que interactúan con RabbitMQ (`ContextoConexionRabbit`, `FabricaConexionRabbit`, `ServicioColaRabbit`) y controladores (`ColasController`) expuestos en Swagger.
+- **BusRabbitMQ.APITest**: Pruebas unitarias con xUnit organizadas por carpetas (`Controladores`, `Servicios`). Incluyen verificaciones para `ColasController`, `ContextoConexionRabbit` y `ServicioColaRabbit`, empleando Moq y FluentAssertions.
 
 ## Configuración destacada
 - **Logs**: Se espera la sección `ConfiguracionLog` en `appsettings*.json` con la ruta base del log. Los archivos se generan diariamente con el formato `yyyyMMddBusRabbitMQ.log` y mensaje `TIPOERROR:: Fecha:: @CLASE:: @METODO:: Mensaje`.
@@ -25,7 +25,8 @@ Incluye:
 
 ### BusRabbitMQ.API
 - `Program.cs` delega el registro de servicios y pipeline en `ConfiguracionAplicacionExtensions`.
-- `ContextoConexionRabbit` mantiene la conexión/cola activa (default u otra configurada mediante endpoints).
+- `ContextoConexionRabbit` mantiene la conexión/cola activa.
+- `FabricaConexionRabbit` encapsula la creación de conexiones `RabbitMQ.Client`.
 - `IServicioColaRabbit`/`ServicioColaRabbit` operan siempre contra la conexión activa.
 - `ColasController` expone:
   - `GET /api/colas/connection`: obtiene la conexión actual.
@@ -36,9 +37,10 @@ Incluye:
   - `POST /api/colas/subscribe`: devuelve el estado de la cola, número de mensajes y contenido acotado.
 
 ### BusRabbitMQ.APITest
-Pendiente de implementación.
+- **Controladores**: pruebas para `ColasController` asegurando respuestas `Ok/BadRequest` según los resultados de los servicios simulados.
+- **Servicios**: pruebas para `ContextoConexionRabbit` (validaciones y restablecimiento) y para `ServicioColaRabbit` (validaciones y manejo de errores al publicar), usando Moq y FluentAssertions.
 
 ## Próximos pasos
-1. Implementar pruebas unitarias (APITest) para servicios, controlador y el contexto de conexión.
-2. Añadir ejemplos Swagger adicionales si se requieren contratos específicos.
+1. Ejecutar las pruebas con `dotnet test src/BusRabbitMQ.APITest/BusRabbitMQ.APITest.csproj`.
+2. Añadir casos adicionales para escenarios exitosos de `ServicioColaRabbit` cuando se disponga de un broker de pruebas.
 3. Ajustar la configuración de RabbitMQ y logs según el entorno de despliegue.

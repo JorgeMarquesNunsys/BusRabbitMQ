@@ -33,9 +33,24 @@
 ## Entrada 7
 **Prompt:** Mover la conexión alternativa a un endpoint dedicado de modo que, al cambiarla, los endpoints `send/publish/subscribe` usen esa cola hasta nuevo aviso.
 
-**Solución:** Se añadió `ContextoConexionRabbit` como singleton para mantener la conexión activa y nuevos endpoints `GET/POST /api/colas/connection` en `ColasController`. Se eliminaron las conexiones personalizadas por solicitud, se ajustaron los modelos (`SolicitudOperacionCola`, `SolicitudEstadoCola`) y `ServicioColaRabbit` para consumir la conexión del contexto, se registró el nuevo servicio de estado y se actualizó la documentación.
+**Solución:** Se añadió `ContextoConexionRabbit` como singleton para mantener la conexión activa y nuevos endpoints `GET/POST /api/colas/connection`. Se eliminaron las conexiones personalizadas por solicitud, se ajustaron los modelos (`SolicitudOperacionCola`, `SolicitudEstadoCola`) y `ServicioColaRabbit` para consumir la conexión del contexto, se registró el nuevo servicio de estado y se actualizó la documentación.
 
 ## Entrada 8
 **Prompt:** Ajustar la API para que el cambio de conexión se haga mediante un endpoint sin body que restablezca la configuración por defecto, manteniendo la conexión alternativa en otro endpoint.
 
-**Solución:** Se amplió `ContextoConexionRabbit` para almacenar la conexión predeterminada, exponer métodos de actualización y restablecimiento, y registrar eventos de logging. `ServicioColaRabbit` ahora consume siempre la conexión activa desde el contexto, `ColasController` ofrece `POST /api/colas/connection/default` sin body, los modelos de solicitud se limpiaron y la documentación se actualizó para reflejar ambos endpoints de conexión.
+**Solución:** Se amplió `ContextoConexionRabbit` para almacenar la conexión predeterminada, exponer métodos de actualización y restablecimiento, y registrar eventos de logging. `ServicioColaRabbit` ahora consume siempre la conexión activa desde el contexto, `ColasController` ofrece `POST /api/colas/connection/default` sin body, los modelos de solicitud se limpiaron y la documentación se actualizó.
+
+## Entrada 9
+**Prompt:** Crear el proyecto de pruebas unitarias dedicado y validar controladores y servicios.
+
+**Solución:** Se introdujo `IFabricaConexionRabbit`/`FabricaConexionRabbit` para desacoplar la creación de conexiones (facilitando los tests), se registró en el contenedor y se refactorizó `ServicioColaRabbit`. Se creó el proyecto `BusRabbitMQ.APITest` con xUnit, Moq y FluentAssertions, añadiendo pruebas para `ColasController`, `ContextoConexionRabbit` y `ServicioColaRabbit`. Se actualizó la documentación y el historial de prompts.
+
+## Entrada 10
+**Prompt:** Crear el proyecto de pruebas, agregar referencias necesarias y escribir pruebas unitarias para extensiones y helpers en archivos/carpeta separados.
+
+**Solución:** Se añadió `BusRabbitMQ.APITest` con xUnit, FluentAssertions, Moq y coverlet; se crearon los tests `Extensiones/RegistroServiciosCompartidosExtensionsTests` (verificando DI y validaciones) y `Helpers/LogHelperTests` (asegurando la generación de logs y la omisión de mensajes vacíos).
+
+## Entrada 11
+**Prompt:** Repetir la estructura de carpetas/nombres para añadir pruebas unitarias de `ColasController`, `ServicioColaRabbit` y `ContextoConexionRabbit`.
+
+**Solución:** Se reorganizó el árbol de pruebas (`Controladores/Colas`, `Servicios/Cola`, `Servicios/Contexto`) y se implementaron casos adicionales que cubren escenarios exitosos y de error, incluyendo mockeo detallado de conexiones RabbitMQ y verificaciones de logging defensivo.

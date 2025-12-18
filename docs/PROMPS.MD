@@ -54,3 +54,8 @@
 **Prompt:** Repetir la estructura de carpetas/nombres para añadir pruebas unitarias de `ColasController`, `ServicioColaRabbit` y `ContextoConexionRabbit`.
 
 **Solución:** Se reorganizó el árbol de pruebas (`Controladores/Colas`, `Servicios/Cola`, `Servicios/Contexto`) y se implementaron casos adicionales que cubren escenarios exitosos y de error, incluyendo mockeo detallado de conexiones RabbitMQ y verificaciones de logging defensivo.
+
+## Entrada 12
+**Prompt:** Volver a crear `FabricaConexionRabbit` e `IFabricaConexionRabbit` dentro de la API, eliminándolos del proyecto Shared y ajustar todas las referencias a la nueva interfaz.
+
+**Solución:** Se reinstalaron ambos archivos bajo `BusRabbitMQ.API`, se limpió la dependencia `RabbitMQ.Client` en Shared y se actualizaron las inyecciones/servicios para utilizar la interfaz de la API, manteniendo el ensamblado Shared libre de SDK de RabbitMQ.

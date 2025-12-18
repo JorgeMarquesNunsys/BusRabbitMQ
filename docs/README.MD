@@ -4,8 +4,8 @@
 BusRabbit es una solución .NET 10 orientada a exponer servicios REST que administran colas RabbitMQ mediante envío directo (`SEND`), publicación (`PUBLISH`) y suscripción (`SUBSCRIBE`). La solución aplica programación defensiva, registro diario de errores, permite cambiar/restaurar la conexión activa a la cola objetivo mediante endpoints dedicados y publica la especificación Swagger (Swashbuckle) junto con la interfaz `Swagger UI` en `/swagger`.
 
 ## Arquitectura
-- **BusRabbitMQ.Shared**: Modelos en español, enumeraciones, helpers (por ejemplo, `LogHelper`, `EnumHelper`) y extensiones de inyección para compartir configuración de RabbitMQ y logging.
-- **BusRabbitMQ.API**: Servicios que interactúan con RabbitMQ (`ContextoConexionRabbit`, `FabricaConexionRabbit`, `ServicioColaRabbit`) y controladores (`ColasController`) expuestos en Swagger.
+- **BusRabbitMQ.Shared**: Modelos en español, enumeraciones, helpers (por ejemplo, `LogHelper`, `EnumHelper`) y extensiones de inyección para compartir configuración de RabbitMQ y logging. Este proyecto permanece libre de dependencias directas hacia `RabbitMQ.Client`; toda la creación de conexiones se delega a la API.
+- **BusRabbitMQ.API**: Servicios que interactúan con RabbitMQ (`ContextoConexionRabbit`, `FabricaConexionRabbit`, `ServicioColaRabbit`) y controladores (`ColasController`) expuestos en Swagger. `FabricaConexionRabbit` encapsula la creación de `IConnection` y mantiene aislada la dependencia con `RabbitMQ.Client` dentro de la API.
 - **BusRabbitMQ.APITest**: Pruebas unitarias con xUnit organizadas por carpetas (`Controladores`, `Servicios`). Incluyen verificaciones para `ColasController`, `ContextoConexionRabbit` y `ServicioColaRabbit`, empleando Moq y FluentAssertions.
 
 ## Configuración destacada

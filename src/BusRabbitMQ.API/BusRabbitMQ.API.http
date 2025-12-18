@@ -1,0 +1,6 @@
+@BusRabbitMQ.API_HostAddress = http://localhost:5095
+
+GET {{BusRabbitMQ.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

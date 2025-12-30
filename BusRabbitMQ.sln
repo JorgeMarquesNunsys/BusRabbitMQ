@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.1.11312.151 d18.0
+VisualStudioVersion = 18.1.11312.151
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
@@ -13,6 +13,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BusRabbitMQ.APITest", "src\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{EBCC3A95-64B0-4F86-ABFF-734D4747792B}"
 	ProjectSection(SolutionItems) = preProject
+		docs\PrompInicial.MD = docs\PrompInicial.MD
 		docs\PROMPS.MD = docs\PROMPS.MD
 		docs\README.MD = docs\README.MD
 	EndProjectSection
